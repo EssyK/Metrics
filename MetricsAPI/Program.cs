@@ -15,12 +15,13 @@ builder.Services.AddDbContext<MetricsDbContext>(
         options.UseLazyLoadingProxies().UseNpgsql(builder.Configuration.GetSection("ConnectionStrings")["MetricsConnection"], o => o.SetPostgresVersion(9, 6));
     });
 
+// when running locally enable CORS. replace the port numnbers for API and UI eg http://testhost:3000
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(
                       policy =>
                       {
-                          policy.WithOrigins("https://localhost:7130", "http://localhost:3000")
+                          policy.WithOrigins("[API url]", "[UI url]")
                                 .AllowAnyHeader()
                                 .AllowAnyMethod();
                       });
