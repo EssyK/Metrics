@@ -9,6 +9,14 @@ namespace MetricsAPI.DataLayer
         {
         }
 
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Metric>()
+                .HasOne(p => p.MetricDefinition)
+                .WithMany(m => m.Metrics)
+                .HasForeignKey(m => m.MetricId);
+        }
+
         public DbSet<Metric> Metrics { get; set; }
         public DbSet<MetricDefinition> MetricDefinitions { get; set; }
     }
