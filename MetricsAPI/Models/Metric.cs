@@ -20,6 +20,6 @@ namespace MetricsAPI.Models
         public int MetricId { get; set; }
 
         [ForeignKey("MetricId")]
-        public MetricDefinition MetricDefinition { get; set; }
+        public virtual MetricDefinition MetricDefinition { get; set; }
     }
 }

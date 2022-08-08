@@ -4,26 +4,31 @@ using Mapster;
 using MetricsAPI.Models;
 using MetricsAPI.DataLayer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Cors;
+using MetricsAPI.Services;
 
 namespace MetricsAPI.Controllers
 {
+    [EnableCors]    
     [Route("api/[controller]")]
     [ApiController]
     public class MetricsController : ControllerBase
     {
         private readonly MetricsDbContext _dbContext;
-        public MetricsController(MetricsDbContext dbContext)
+        private IMetricsHelper _metricsHelper;
+        public MetricsController(MetricsDbContext dbContext, IMetricsHelper metricsHelper)
         {
             _dbContext = dbContext;
+            _metricsHelper = metricsHelper;
         }
                 
         [HttpPost("AddMetricDefinition")]
         public MetricDefinitionDto AddMetricDefinition([FromBody] MetricDefinitionDto metricDto)
         {
-            var metric = metricDto.Adapt<MetricDefinition>();
             MetricDefinitionDto response = new MetricDefinitionDto();
 
-            //persist to DB
+            var metric = metricDto.Adapt<MetricDefinition>();
+
             try
             {
                 _dbContext.MetricDefinitions.Add(metric);
@@ -32,7 +37,7 @@ namespace MetricsAPI.Controllers
             }
             catch (Exception ex)
             {
-                //add message
+                Console.WriteLine(ex.ToString());
             }
 
             return response;
@@ -46,17 +51,22 @@ namespace MetricsAPI.Controllers
         }
 
         [HttpPost("AddMetricValue")]
-        public MetricDisplayDto AddMetricValue([FromBody] MetricDto metricDto)
+        public async Task<MetricDisplayDto> AddMetricValue([FromBody] MetricDto metricDto)
         {
             var metric = metricDto.Adapt<Metric>();
-           MetricDisplayDto response = new MetricDisplayDto();
+            MetricDisplayDto response = new MetricDisplayDto();
 
             //persist to DB
             try
             {
                 _dbContext.Metrics.Add(metric);
-                var result = _dbContext.SaveChanges();
-                response = metric.Adapt<MetricDisplayDto>();
+                var result = await _dbContext.SaveChangesAsync();
+
+                if(result == 1)
+                {
+                    var dbMetric = await _dbContext.FindAsync<Metric>(metric.Id);
+                    response = dbMetric.Adapt<MetricDisplayDto>();
+                }
             }
             catch (Exception ex)
             {
@@ -71,6 +81,15 @@ namespace MetricsAPI.Controllers
         {
             var result = await _dbContext.Metrics.ToListAsync();
             return result.Adapt<List<MetricDisplayDto>>();
+        }
+
+        [HttpGet("GetMetricAverages")]
+        public async Task<MetricAveragesDto> GetMetricAverages()
+        {
+            var metrics = await _dbContext.Metrics.ToListAsync();
+            var result = await _metricsHelper.GetMetricsAverages(metrics);
+
+            return result;
         }
 
 
