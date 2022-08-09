@@ -44,7 +44,8 @@ namespace MetricsAPI.Services
                         Value = g.Sum(s => s.Value) / minutesPerDay,
                         Name = g.First().Name,
                         Month = g.First().MonthNumber,
-                        MonthDay = g.First().MonthDay
+                        MonthDay = g.First().MonthDay,
+                        MonthString = g.First().TimeStamp.ToString("MMM")
                     }).OrderBy(g => g.Month).ThenBy(g => g.MonthDay);
 
                     metricAveragesDto = new MetricAveragesDto
