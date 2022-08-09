@@ -1,15 +1,17 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using MetricsAPI.DTOs;
-using Mapster;
-using MetricsAPI.Models;
+﻿using Mapster;
 using MetricsAPI.DataLayer;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Cors;
+using MetricsAPI.DTOs;
+using MetricsAPI.Models;
+using MetricsAPI.Response;
 using MetricsAPI.Services;
+using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Net;
 
 namespace MetricsAPI.Controllers
 {
-    [EnableCors]    
+    [EnableCors]
     [Route("api/[controller]")]
     [ApiController]
     public class MetricsController : ControllerBase
@@ -21,75 +23,147 @@ namespace MetricsAPI.Controllers
             _dbContext = dbContext;
             _metricsHelper = metricsHelper;
         }
-                
-        [HttpPost("AddMetricDefinition")]
-        public MetricDefinitionDto AddMetricDefinition([FromBody] MetricDefinitionDto metricDto)
-        {
-            MetricDefinitionDto response = new MetricDefinitionDto();
 
+        [HttpPost("AddMetricDefinition")]
+        public BaseResponse<MetricDefinitionDto> AddMetricDefinition([FromBody] MetricDefinitionDto metricDto)
+        {
+            MetricDefinitionDto metricDefinitionDto;
             var metric = metricDto.Adapt<MetricDefinition>();
 
             try
             {
                 _dbContext.MetricDefinitions.Add(metric);
                 var result = _dbContext.SaveChanges();
-                response = metric.Adapt<MetricDefinitionDto>();
+                metricDefinitionDto = metric.Adapt<MetricDefinitionDto>();
+
+                return new BaseResponse<MetricDefinitionDto>
+                {
+                    Data = metricDefinitionDto,
+                    StatusCode = HttpStatusCode.OK
+                };
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                return new BaseResponse<MetricDefinitionDto>
+                {
+                    StatusCode = System.Net.HttpStatusCode.OK,
+                    Message = ex.Message
+                };
             }
-
-            return response;
         }
 
         [HttpGet("AllMetricDefinitions")]
-        public async Task<IList<MetricDefinitionDto>> GetAllMetricDefinitions()
+        public async Task<BaseResponse<IList<MetricDefinitionDto>>> GetAllMetricDefinitions()
         {
-            var result = await _dbContext.MetricDefinitions.ToListAsync();
-            return result.Adapt<List<MetricDefinitionDto>>();
+            try
+            {
+                var metricDefinitions = await _dbContext.MetricDefinitions.ToListAsync();
+                var metricDtoDefinitions = metricDefinitions.Adapt<List<MetricDefinitionDto>>();
+
+                return new BaseResponse<IList<MetricDefinitionDto>>
+                {
+                    Data = metricDtoDefinitions,
+                    StatusCode = HttpStatusCode.OK
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<IList<MetricDefinitionDto>>
+                {
+                    StatusCode = HttpStatusCode.InternalServerError,
+                    Message = ex.Message
+                };
+            }
         }
 
         [HttpPost("AddMetricValue")]
-        public async Task<MetricDisplayDto> AddMetricValue([FromBody] MetricDto metricDto)
+        public async Task<BaseResponse<MetricDisplayDto>> AddMetricValue([FromBody] MetricDto metricDto)
         {
             var metric = metricDto.Adapt<Metric>();
-            MetricDisplayDto response = new MetricDisplayDto();
+            MetricDisplayDto response;
 
-            //persist to DB
             try
             {
                 _dbContext.Metrics.Add(metric);
                 var result = await _dbContext.SaveChangesAsync();
 
-                if(result == 1)
+                if (result == 1)
                 {
                     var dbMetric = await _dbContext.FindAsync<Metric>(metric.Id);
                     response = dbMetric.Adapt<MetricDisplayDto>();
+
+                    return new BaseResponse<MetricDisplayDto>
+                    {
+                        Data = response,
+                        StatusCode = HttpStatusCode.OK
+                    };
+                }
+                else
+                {
+                    return new BaseResponse<MetricDisplayDto>
+                    {
+                        StatusCode = HttpStatusCode.InternalServerError,
+                        Message = "Metric was not saved. Kindly retry."
+                    };
+
                 }
             }
             catch (Exception ex)
             {
-                //add message
+                return new BaseResponse<MetricDisplayDto>
+                {
+                    Message = ex.Message,
+                    StatusCode = HttpStatusCode.InternalServerError
+                };
             }
-
-            return response;
         }
-                
+
         [HttpGet("GetAllMetrics")]
-        public async Task<List<MetricDisplayDto>> GetAllMetricValues()
+        public async Task<BaseResponse<List<MetricDisplayDto>>> GetAllMetricValues()
         {
-            var result = await _dbContext.Metrics.ToListAsync();
-            return result.Adapt<List<MetricDisplayDto>>();
+            try
+            {
+                var result = await _dbContext.Metrics.ToListAsync();
+                var metricDto = result.Adapt<List<MetricDisplayDto>>();
+
+                return new BaseResponse<List<MetricDisplayDto>>
+                {
+                    Data = metricDto,
+                    StatusCode = HttpStatusCode.OK
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<List<MetricDisplayDto>>
+                {
+                    StatusCode = HttpStatusCode.InternalServerError,
+                    Message = ex.Message
+                };
+            }
         }
 
         [HttpGet("GetMetricAverages")]
-        public async Task<MetricAveragesDto> GetMetricAverages()
+        public async Task<BaseResponse<MetricAveragesDto>> GetMetricAverages()
         {
-            var metrics = await _dbContext.Metrics.ToListAsync();
-            var result = await _metricsHelper.GetMetricsAverages(metrics);
+            try
+            {
+                var metrics = await _dbContext.Metrics.ToListAsync();
+                var result = await _metricsHelper.GetMetricsAverages(metrics);
 
-            return result;
+                return new BaseResponse<MetricAveragesDto>
+                {
+                    Data = result,
+                    StatusCode = HttpStatusCode.OK
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<MetricAveragesDto>
+                {
+                    StatusCode = HttpStatusCode.InternalServerError,
+                    Message = ex.Message
+                };
+            }
         }
 
 

@@ -14,7 +14,10 @@ namespace MetricsAPI.DTOs
 
     public class MetricDto : BaseDto<MetricDto, Metric>
     {
+        [Required]
         public int MetricId { get; set; }
+
+        [Required]
         public long Value { get; set; }
     }
 
